@@ -21,6 +21,10 @@ properties:
               - nxp,pn557
           - const: nxp,nxp-nci-i2c
 
+  clocks:
+    maxItems: 1
+    description: Reference clock, if not always running
+
   enable-gpios:
     description: Output GPIO pin used for enabling/disabling the controller
 
@@ -29,6 +33,9 @@ properties:
 
   interrupts:
     maxItems: 1
+
+  pvdd-supply:
+    description: Supply for the digital I/O pads (PVDD)
 
   reg:
     maxItems: 1

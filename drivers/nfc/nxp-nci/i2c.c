@@ -13,6 +13,7 @@
  */
 
 #include <linux/acpi.h>
+#include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/i2c.h>
 #include <linux/interrupt.h>
@@ -20,6 +21,7 @@
 #include <linux/module.h>
 #include <linux/nfc.h>
 #include <linux/gpio/consumer.h>
+#include <linux/regulator/consumer.h>
 #include <linux/unaligned.h>
 
 #include <net/nfc/nfc.h>
@@ -36,6 +38,7 @@ struct nxp_nci_i2c_phy {
 
 	struct gpio_desc *gpiod_en;
 	struct gpio_desc *gpiod_fw;
+	struct clk *clk;
 
 	int hard_fault; /*
 			 * < 0 if hardware error occurred (e.g. i2c err)
@@ -295,6 +298,16 @@ static int nxp_nci_i2c_probe(struct i2c_client *client)
 	r = devm_acpi_dev_add_driver_gpios(dev, acpi_nxp_nci_gpios);
 	if (r)
 		dev_dbg(dev, "Unable to add GPIO mapping table\n");
+
+	/* The I/O supply and the reference clock must be up before VEN */
+	r = devm_regulator_get_enable_optional(dev, "pvdd");
+	if (r && r != -ENODEV)
+		return dev_err_probe(dev, r, "Failed to enable PVDD supply\n");
+
+	phy->clk = devm_clk_get_optional_enabled(dev, NULL);
+	if (IS_ERR(phy->clk))
+		return dev_err_probe(dev, PTR_ERR(phy->clk),
+				     "Failed to enable clock\n");
 
 	phy->gpiod_en = devm_gpiod_get(dev, "enable", GPIOD_OUT_LOW);
 	if (IS_ERR(phy->gpiod_en)) {
