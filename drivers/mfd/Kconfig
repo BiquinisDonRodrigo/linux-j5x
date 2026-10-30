@@ -1496,6 +1496,17 @@ config MFD_SL28CPLD
 	  It can be found on the following boards:
 		* SMARC-sAL28
 
+config MFD_SM5703
+	tristate "Silicon Mitus SM5703 MFD"
+	depends on I2C
+	depends on OF
+	select MFD_CORE
+	select REGMAP_I2C
+	help
+	  This is the core driver for the Silicon Mitus SM5703 multi-function
+	  device, found e.g. in the Samsung Galaxy J5 2016. It provides the
+	  register map for the regulator, charger and flash LED sub-drivers.
+
 config MFD_SM501
 	tristate "Silicon Motion SM501"
 	depends on HAS_DMA
