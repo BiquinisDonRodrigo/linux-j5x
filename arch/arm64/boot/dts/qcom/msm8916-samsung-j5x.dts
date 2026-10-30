@@ -4,10 +4,25 @@
 
 #include "msm8916-samsung-j5-common.dtsi"
 
+#include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
+
 / {
 	model = "Samsung Galaxy J5 (2016)";
 	compatible = "samsung,j5x", "qcom,msm8916";
 	chassis-type = "handset";
+
+	reg_nfc_pvdd: regulator-nfc-pvdd {
+		compatible = "regulator-fixed";
+		regulator-name = "nfc_pvdd";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+
+		gpio = <&tlmm 89 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+
+		pinctrl-0 = <&nfc_pvdd_en_default>;
+		pinctrl-names = "default";
+	};
 
 	reg_vdd_lcd_3p0: regulator-vdd-lcd-3p0 {
 		compatible = "regulator-fixed";
@@ -47,6 +62,26 @@
 		       "0", "0", "-1";
 };
 
+&blsp_i2c1 {
+	status = "okay";
+
+	nfc@2b {
+		compatible = "nxp,pn547", "nxp,nxp-nci-i2c";
+		reg = <0x2b>;
+
+		interrupts-extended = <&tlmm 50 IRQ_TYPE_EDGE_RISING>;
+
+		enable-gpios = <&tlmm 94 GPIO_ACTIVE_HIGH>;
+		firmware-gpios = <&tlmm 116 GPIO_ACTIVE_HIGH>;
+
+		pvdd-supply = <&reg_nfc_pvdd>;
+		clocks = <&rpmcc RPM_SMD_BB_CLK2_PIN>;
+
+		pinctrl-0 = <&nfc_default>, <&nfc_clk_req>;
+		pinctrl-names = "default";
+	};
+};
+
 &front_flash_led {
 	ctrl-gpios = <&tlmm 85 GPIO_ACTIVE_HIGH>;
 };
@@ -59,6 +94,16 @@
 	compatible = "samsung,s6e8aa5x01-ams520kt01";
 	vdd3-supply = <&reg_vdd_lcd_1p8>;
 	vci-supply = <&reg_vdd_lcd_3p0>;
+};
+
+&pm8916_gpios {
+	nfc_clk_req: nfc-clk-req-state {
+		pins = "gpio2";
+		function = "func1";
+		power-source = <PM8916_GPIO_L2>;
+		bias-disable;
+		input-enable;
+	};
 };
 
 &reg_vdd_lcd_1p8 {
@@ -75,6 +120,29 @@
 		function = "gpio";
 		drive-strength = <2>;
 		bias-disable;
+	};
+
+	nfc_default: nfc-default-state {
+		irq-pins {
+			pins = "gpio50";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+
+		nfc-pins {
+			pins = "gpio94", "gpio116";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+	};
+
+	nfc_pvdd_en_default: nfc-pvdd-en-default-state {
+		pins = "gpio89";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-pull-down;
 	};
 
 	tsp_ldo_en_default: tsp-ldo-en-default-state {
