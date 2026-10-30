@@ -188,6 +188,8 @@ static void ktd2692_setup(struct ktd2692_context *led)
 	expresswire_power_off(&led->props);
 	gpiod_direction_output(led->aux_gpio, 0);
 
+	/* Disable low voltage protection, like the vendor kernels do */
+	expresswire_write_u8(&led->props, KTD2692_REG_LVP_BASE);
 	expresswire_write_u8(&led->props, (KTD2692_MM_MIN_CURR_THRESHOLD_SCALE - 1)
 				 | KTD2692_REG_MM_MIN_CURR_THRESHOLD_BASE);
 	expresswire_write_u8(&led->props, KTD2692_FLASH_MODE_CURR_PERCENT(45)
