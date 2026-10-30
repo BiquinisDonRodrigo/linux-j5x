@@ -312,6 +312,32 @@ static int hi552_enum_frame_size(struct v4l2_subdev *sd,
 	return 0;
 }
 
+static int hi552_get_selection(struct v4l2_subdev *sd,
+			       struct v4l2_subdev_state *state,
+			       struct v4l2_subdev_selection *sel)
+{
+	const struct hi552_mode *mode = &hi552_modes[0];
+
+	switch (sel->target) {
+	/*
+	 * The vendor sequence reads out a 2576x1932 window and the size of
+	 * the full pixel array is not known, so report that window for all
+	 * targets.
+	 */
+	case V4L2_SEL_TGT_CROP:
+	case V4L2_SEL_TGT_CROP_DEFAULT:
+	case V4L2_SEL_TGT_CROP_BOUNDS:
+	case V4L2_SEL_TGT_NATIVE_SIZE:
+		sel->r.left = 0;
+		sel->r.top = 0;
+		sel->r.width = mode->width;
+		sel->r.height = mode->height;
+		return 0;
+	default:
+		return -EINVAL;
+	}
+}
+
 static int hi552_init_state(struct v4l2_subdev *sd,
 			    struct v4l2_subdev_state *state)
 {
@@ -330,6 +356,7 @@ static const struct v4l2_subdev_pad_ops hi552_pad_ops = {
 	.get_fmt = v4l2_subdev_get_fmt,
 	.enum_mbus_code = hi552_enum_mbus_code,
 	.enum_frame_size = hi552_enum_frame_size,
+	.get_selection = hi552_get_selection,
 	.enable_streams = hi552_enable_streams,
 	.disable_streams = hi552_disable_streams,
 };
