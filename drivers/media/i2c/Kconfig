@@ -110,6 +110,17 @@ config VIDEO_GC2145
 	  To compile this driver as a module, choose M here: the
 	  module will be called gc2145.
 
+config VIDEO_HI552
+	tristate "SK Hynix Hi-552 sensor support"
+	select V4L2_CCI_I2C
+	help
+	  This is a Video4Linux2 sensor driver for the SK Hynix Hi-552
+	  5 megapixel camera, used e.g. as the front camera of the Samsung
+	  Galaxy J5 2016.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called hi552.
+
 config VIDEO_HI556
 	tristate "Hynix Hi-556 sensor support"
 	help
