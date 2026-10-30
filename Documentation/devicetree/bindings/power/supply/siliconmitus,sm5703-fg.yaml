@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/power/supply/siliconmitus,sm5703-fg.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Silicon Mitus SM5703 fuel gauge
+
+maintainers:
+  - BiquinisDonRodrigo <alonso.licorice141@silomails.com>
+
+description:
+  The fuel gauge block of the Silicon Mitus SM5703 sits on its own I2C
+  address, separate from the charger/regulator part of the chip. It
+  measures battery voltage and current and estimates the state of charge.
+
+allOf:
+  - $ref: power-supply.yaml#
+
+properties:
+  compatible:
+    const: siliconmitus,sm5703-fg
+
+  reg:
+    maxItems: 1
+
+  interrupts:
+    maxItems: 1
+    description: Low battery (voltage or SoC) alert.
+
+  monitored-battery: true
+
+required:
+  - compatible
+  - reg
+
+additionalProperties: false
+
+examples:
+  - |
+    #include <dt-bindings/interrupt-controller/irq.h>
+
+    i2c {
+      #address-cells = <1>;
+      #size-cells = <0>;
+
+      fuel-gauge@71 {
+        compatible = "siliconmitus,sm5703-fg";
+        reg = <0x71>;
+        interrupts = <21 IRQ_TYPE_EDGE_FALLING>;
+      };
+    };
