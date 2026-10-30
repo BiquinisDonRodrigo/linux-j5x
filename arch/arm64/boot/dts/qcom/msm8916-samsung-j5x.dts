@@ -34,6 +34,17 @@
 		pinctrl-0 = <&tsp_ldo_en_default>;
 		pinctrl-names = "default";
 	};
+
+	reg_vdd_prox_led: regulator-vdd-prox-led {
+		compatible = "regulator-fixed";
+		regulator-name = "vdd_prox_led";
+
+		gpio = <&tlmm 97 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+
+		pinctrl-0 = <&prox_led_en_default>;
+		pinctrl-names = "default";
+	};
 };
 
 &accelerometer {
@@ -49,6 +60,23 @@
 
 &front_flash_led {
 	ctrl-gpios = <&tlmm 85 GPIO_ACTIVE_HIGH>;
+};
+
+&i2c_sensors {
+	proximity@60 {
+		compatible = "capella,cm36672p";
+		reg = <0x60>;
+
+		interrupts-extended = <&tlmm 20 IRQ_TYPE_EDGE_FALLING>;
+		proximity-near-level = <17>;
+
+		vdd-supply = <&pm8916_l17>;
+		vio-supply = <&pm8916_l6>;
+		vled-supply = <&reg_vdd_prox_led>;
+
+		pinctrl-0 = <&prox_int_default>;
+		pinctrl-names = "default";
+	};
 };
 
 &muic {
@@ -72,6 +100,20 @@
 &tlmm {
 	lcd_3p0_ldo_en_default: lcd-3p0-ldo-en-default-state {
 		pins = "gpio115";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	prox_int_default: prox-int-default-state {
+		pins = "gpio20";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	prox_led_en_default: prox-led-en-default-state {
+		pins = "gpio97";
 		function = "gpio";
 		drive-strength = <2>;
 		bias-disable;
