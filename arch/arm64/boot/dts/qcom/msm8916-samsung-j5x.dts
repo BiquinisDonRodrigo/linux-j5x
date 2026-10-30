@@ -262,7 +262,7 @@
 		reset-gpios = <&tlmm 28 GPIO_ACTIVE_LOW>;
 
 		orientation = <0>;
-		rotation = <270>;
+		rotation = <90>;
 
 		pinctrl-0 = <&cam_front_default>;
 		pinctrl-names = "default";
