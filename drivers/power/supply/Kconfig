@@ -1072,6 +1072,7 @@ config FUEL_GAUGE_STC3117
          Say Y here to enable support for fuel gauge with STC3117
          chip.
 
+<<<<<<< HEAD
 config FUEL_GAUGE_SM5703
 	tristate "Silicon Mitus SM5703 fuel gauge driver"
 	depends on I2C
@@ -1083,6 +1084,8 @@ config FUEL_GAUGE_SM5703
 	  The driver only reads the battery voltage, current and state of
 	  charge, it does not configure the fuel gauge.
 
+=======
+>>>>>>> j5x/sm5703-charger
 config CHARGER_SM5703
 	tristate "Silicon Mitus SM5703 charger driver"
 	depends on MFD_SM5703
