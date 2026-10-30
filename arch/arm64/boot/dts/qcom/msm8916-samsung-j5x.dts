@@ -9,6 +9,13 @@
 	compatible = "samsung,j5x", "qcom,msm8916";
 	chassis-type = "handset";
 
+	haptic {
+		compatible = "regulator-haptic";
+		haptic-supply = <&reg_motor_vdd>;
+		min-microvolt = <3300000>;
+		max-microvolt = <3300000>;
+	};
+
 	i2c-fuel-gauge {
 		compatible = "i2c-gpio";
 		sda-gpios = <&tlmm 16 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
@@ -29,6 +36,38 @@
 
 			pinctrl-0 = <&fg_int_default>;
 			pinctrl-names = "default";
+		};
+	};
+
+	i2c-pmic {
+		compatible = "i2c-gpio";
+		sda-gpios = <&tlmm 22 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
+		scl-gpios = <&tlmm 23 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
+		i2c-gpio,delay-us = <2>;
+
+		pinctrl-0 = <&pmic_i2c_default>;
+		pinctrl-names = "default";
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		pmic@49 {
+			compatible = "siliconmitus,sm5703-mfd";
+			reg = <0x49>;
+
+			interrupts-extended = <&tlmm 62 IRQ_TYPE_EDGE_FALLING>;
+			reset-gpios = <&tlmm 24 GPIO_ACTIVE_LOW>;
+
+			pinctrl-0 = <&pmic_int_default &pmic_reset_default>;
+			pinctrl-names = "default";
+
+			regulators {
+				reg_motor_vdd: ldo2 {
+					regulator-name = "motor_vdd";
+					regulator-min-microvolt = <3300000>;
+					regulator-max-microvolt = <3300000>;
+				};
+			};
 		};
 	};
 
@@ -175,6 +214,27 @@
 
 	lcd_3p0_ldo_en_default: lcd-3p0-ldo-en-default-state {
 		pins = "gpio115";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	pmic_i2c_default: pmic-i2c-default-state {
+		pins = "gpio22", "gpio23";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	pmic_int_default: pmic-int-default-state {
+		pins = "gpio62";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	pmic_reset_default: pmic-reset-default-state {
+		pins = "gpio24";
 		function = "gpio";
 		drive-strength = <2>;
 		bias-disable;
