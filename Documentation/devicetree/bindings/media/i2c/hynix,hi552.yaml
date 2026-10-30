@@ -1,0 +1,102 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/media/i2c/hynix,hi552.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: SK Hynix Hi-552 5 megapixel CMOS image sensor
+
+maintainers:
+  - BiquinisDonRodrigo <alonso.licorice141@silomails.com>
+
+description:
+  The Hi-552 is a 5 megapixel raw Bayer image sensor with a two lane MIPI
+  CSI-2 interface, controlled over I2C.
+
+allOf:
+  - $ref: /schemas/media/video-interface-devices.yaml#
+
+properties:
+  compatible:
+    const: hynix,hi552
+
+  reg:
+    maxItems: 1
+
+  clocks:
+    maxItems: 1
+
+  dovdd-supply:
+    description: Digital I/O supply (1.8V)
+
+  avdd-supply:
+    description: Analog supply
+
+  dvdd-supply:
+    description: Digital core supply
+
+  reset-gpios:
+    maxItems: 1
+    description: Active low reset line
+
+  port:
+    $ref: /schemas/graph.yaml#/$defs/port-base
+    additionalProperties: false
+
+    properties:
+      endpoint:
+        $ref: /schemas/media/video-interfaces.yaml#
+        unevaluatedProperties: false
+
+        properties:
+          data-lanes:
+            items:
+              - const: 1
+              - const: 2
+
+          link-frequencies: true
+
+        required:
+          - data-lanes
+          - link-frequencies
+
+required:
+  - compatible
+  - reg
+  - clocks
+  - dovdd-supply
+  - avdd-supply
+  - dvdd-supply
+  - reset-gpios
+  - port
+
+unevaluatedProperties: false
+
+examples:
+  - |
+    #include <dt-bindings/gpio/gpio.h>
+
+    i2c {
+      #address-cells = <1>;
+      #size-cells = <0>;
+
+      camera@20 {
+        compatible = "hynix,hi552";
+        reg = <0x20>;
+        clocks = <&mclk1>;
+        dovdd-supply = <&reg_1v8>;
+        avdd-supply = <&reg_avdd>;
+        dvdd-supply = <&reg_dvdd>;
+        reset-gpios = <&tlmm 28 GPIO_ACTIVE_LOW>;
+        orientation = <0>;
+        rotation = <270>;
+
+        port {
+          endpoint {
+            remote-endpoint = <&csiphy1_ep>;
+            data-lanes = <1 2>;
+            link-frequencies = /bits/ 64 <440000000>;
+          };
+        };
+      };
+    };
