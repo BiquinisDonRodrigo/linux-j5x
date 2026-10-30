@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/mfd/siliconmitus,sm5703.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Silicon Mitus SM5703 multi-function device
+
+maintainers:
+  - BiquinisDonRodrigo <alonso.licorice141@silomails.com>
+
+description:
+  The SM5703 contains a battery charger, a flash LED driver, a USB OTG
+  boost converter, three LDOs, two fixed USB LDOs and a buck converter.
+  Its MUIC and fuel gauge parts are on separate I2C addresses.
+
+properties:
+  compatible:
+    const: siliconmitus,sm5703-mfd
+
+  reg:
+    maxItems: 1
+
+  interrupts:
+    maxItems: 1
+
+  reset-gpios:
+    maxItems: 1
+    description: MRSTB line. It must stay deasserted while the system runs.
+
+  regulators:
+    $ref: /schemas/regulator/siliconmitus,sm5703-regulator.yaml#
+
+required:
+  - compatible
+  - reg
+
+additionalProperties: false
+
+examples:
+  - |
+    #include <dt-bindings/gpio/gpio.h>
+
+    i2c {
+      #address-cells = <1>;
+      #size-cells = <0>;
+
+      pmic@49 {
+        compatible = "siliconmitus,sm5703-mfd";
+        reg = <0x49>;
+        reset-gpios = <&tlmm 24 GPIO_ACTIVE_LOW>;
+
+        regulators {
+          ldo2 {
+            regulator-min-microvolt = <3300000>;
+            regulator-max-microvolt = <3300000>;
+          };
+        };
+      };
+    };
