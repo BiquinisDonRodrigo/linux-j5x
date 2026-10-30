@@ -108,6 +108,7 @@ obj-$(CONFIG_LEDS_EXPRESSWIRE)		+= leds-expresswire.o
 obj-$(CONFIG_LEDS_CR0014114)		+= leds-cr0014114.o
 obj-$(CONFIG_LEDS_DAC124S085)		+= leds-dac124s085.o
 obj-$(CONFIG_LEDS_EL15203000)		+= leds-el15203000.o
+obj-$(CONFIG_LEDS_SM5703)		+= leds-sm5703.o
 obj-$(CONFIG_LEDS_SPI_BYTE)		+= leds-spi-byte.o
 
 # LED Userspace Drivers
