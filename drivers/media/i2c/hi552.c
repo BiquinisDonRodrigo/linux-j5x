@@ -61,8 +61,24 @@ struct hi552_mode {
 	u32 height;
 	u32 llp;
 	u32 fll_def;
+	/* Written after the common initialisation sequence */
 	const struct cci_reg_sequence *regs;
 	unsigned int num_regs;
+};
+
+/*
+ * 2x2 binning, following the register changes between the full and binned
+ * modes of the Hi-556 (same register map): vertical binning with the row
+ * increments, horizontal digital binning in the ISP, half output size.
+ */
+static const struct cci_reg_sequence hi552_mode_1288x966_regs[] = {
+	{ CCI_REG16(0x000c), 0x0122 },	/* binning on */
+	{ CCI_REG16(0x002e), 0x3311 },	/* y even/odd inc tobp */
+	{ CCI_REG16(0x0030), 0x3311 },	/* y even/odd inc dummy */
+	{ CCI_REG16(0x0032), 0x3311 },	/* y even/odd inc active */
+	{ CCI_REG16(0x0a04), 0x016a },	/* isp_en with binning */
+	{ CCI_REG16(0x0a12), 1288 },	/* x output size */
+	{ CCI_REG16(0x0a14), 966 },	/* y output size */
 };
 
 static const struct hi552_mode hi552_modes[] = {
@@ -71,8 +87,13 @@ static const struct hi552_mode hi552_modes[] = {
 		.height = 1932,
 		.llp = 0x0b60,
 		.fll_def = 0x07c2,
-		.regs = hi552_init_regs,
-		.num_regs = ARRAY_SIZE(hi552_init_regs),
+	}, {
+		.width = 1288,
+		.height = 966,
+		.llp = 0x0b60,
+		.fll_def = 0x07c2,
+		.regs = hi552_mode_1288x966_regs,
+		.num_regs = ARRAY_SIZE(hi552_mode_1288x966_regs),
 	},
 };
 
@@ -100,11 +121,27 @@ static inline struct hi552 *to_hi552(struct v4l2_subdev *sd)
 	return container_of(sd, struct hi552, sd);
 }
 
+static const struct hi552_mode *
+hi552_find_mode(const struct v4l2_mbus_framefmt *fmt)
+{
+	return v4l2_find_nearest_size(hi552_modes, ARRAY_SIZE(hi552_modes),
+				      width, height, fmt->width, fmt->height);
+}
+
+static const struct hi552_mode *hi552_active_mode(struct hi552 *hi552)
+{
+	struct v4l2_subdev_state *state;
+
+	state = v4l2_subdev_get_locked_active_state(&hi552->sd);
+
+	return hi552_find_mode(v4l2_subdev_state_get_format(state, 0));
+}
+
 static int hi552_set_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct hi552 *hi552 = container_of(ctrl->handler, struct hi552,
 					   ctrl_handler);
-	const struct hi552_mode *mode = &hi552_modes[0];
+	const struct hi552_mode *mode = hi552_active_mode(hi552);
 	int ret = 0;
 
 	if (ctrl->id == V4L2_CID_VBLANK) {
@@ -230,16 +267,21 @@ static int hi552_enable_streams(struct v4l2_subdev *sd,
 				struct v4l2_subdev_state *state, u32 pad,
 				u64 streams_mask)
 {
-	const struct hi552_mode *mode = &hi552_modes[0];
 	struct hi552 *hi552 = to_hi552(sd);
+	const struct hi552_mode *mode;
 	int ret;
+
+	mode = hi552_find_mode(v4l2_subdev_state_get_format(state, 0));
 
 	ret = pm_runtime_resume_and_get(hi552->dev);
 	if (ret)
 		return ret;
 
-	ret = cci_multi_reg_write(hi552->regmap, mode->regs, mode->num_regs,
-				  NULL);
+	ret = cci_multi_reg_write(hi552->regmap, hi552_init_regs,
+				  ARRAY_SIZE(hi552_init_regs), NULL);
+	if (!ret && mode->regs)
+		ret = cci_multi_reg_write(hi552->regmap, mode->regs,
+					  mode->num_regs, NULL);
 	if (ret) {
 		dev_err(hi552->dev, "failed to write mode registers: %d\n", ret);
 		goto error;
@@ -278,8 +320,23 @@ static int hi552_set_format(struct v4l2_subdev *sd,
 			    struct v4l2_subdev_state *state,
 			    struct v4l2_subdev_format *fmt)
 {
-	hi552_update_pad_format(&hi552_modes[0], &fmt->format);
+	struct hi552 *hi552 = to_hi552(sd);
+	const struct hi552_mode *mode;
+
+	mode = hi552_find_mode(&fmt->format);
+	hi552_update_pad_format(mode, &fmt->format);
 	*v4l2_subdev_state_get_format(state, fmt->pad) = fmt->format;
+
+	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY)
+		return 0;
+
+	__v4l2_ctrl_modify_range(hi552->vblank, mode->fll_def - mode->height,
+				 HI552_FLL_MAX - mode->height, 1,
+				 mode->fll_def - mode->height);
+	__v4l2_ctrl_s_ctrl(hi552->vblank, mode->fll_def - mode->height);
+	__v4l2_ctrl_modify_range(hi552->hblank, mode->llp - mode->width,
+				 mode->llp - mode->width, 1,
+				 mode->llp - mode->width);
 
 	return 0;
 }
