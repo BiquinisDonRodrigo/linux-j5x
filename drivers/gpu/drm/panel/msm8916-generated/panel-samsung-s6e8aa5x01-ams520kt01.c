@@ -3,6 +3,7 @@
 // Generated with linux-mdss-dsi-panel-driver-generator from vendor device tree:
 //   Copyright (c) 2013, The Linux Foundation. All rights reserved. (FIXME)
 
+#include <linux/backlight.h>
 #include <linux/delay.h>
 #include <linux/gpio/consumer.h>
 #include <linux/mod_devicetable.h>
@@ -19,6 +20,48 @@ struct s6e8aa5x01_ams520kt01 {
 	struct mipi_dsi_device *dsi;
 	struct regulator_bulk_data *supplies;
 	struct gpio_desc *reset_gpio;
+};
+
+/*
+ * Brightness is controlled through AID (AMOLED impulsive driving), which sets
+ * how many of the 1304 lines of a frame the panel stays dark, while keeping
+ * the 360 cd/m2 reference gamma written in the init sequence. The vendor
+ * kernel limits the AID value to 15..1262 lines (1.15%..96.78%).
+ */
+#define AMS520KT01_AID_LINES_TOTAL	1304
+#define AMS520KT01_AID_MIN		15
+#define AMS520KT01_AID_MAX		1262
+#define AMS520KT01_MAX_BRIGHTNESS	(AMS520KT01_AID_MAX - AMS520KT01_AID_MIN)
+#define AMS520KT01_MAX_LUMINANCE	360
+
+/* ELVSS settings per luminance, from the vendor smart ACL ELVSS map */
+static const struct {
+	u16 max_luminance;
+	u8 elvss[2];
+} s6e8aa5x01_ams520kt01_elvss[] = {
+	{  20, { 0xac, 0x0f } },
+	{  21, { 0xac, 0x11 } },
+	{  22, { 0xac, 0x13 } },
+	{  24, { 0xac, 0x15 } },
+	{  25, { 0xac, 0x17 } },
+	{  27, { 0xac, 0x19 } },
+	{  29, { 0xac, 0x1c } },
+	{  39, { 0xac, 0x1f } },
+	{  72, { 0xbc, 0x1f } },
+	{  98, { 0xbc, 0x1e } },
+	{ 111, { 0xbc, 0x1d } },
+	{ 172, { 0xbc, 0x1c } },
+	{ 183, { 0xbc, 0x1b } },
+	{ 207, { 0xbc, 0x19 } },
+	{ 220, { 0xbc, 0x18 } },
+	{ 234, { 0xbc, 0x17 } },
+	{ 249, { 0xbc, 0x16 } },
+	{ 265, { 0xbc, 0x15 } },
+	{ 282, { 0xbc, 0x14 } },
+	{ 300, { 0xbc, 0x13 } },
+	{ 316, { 0xbc, 0x12 } },
+	{ 333, { 0xbc, 0x11 } },
+	{ 360, { 0xbc, 0x0f } },
 };
 
 static const struct regulator_bulk_data s6e8aa5x01_ams520kt01_supplies[] = {
@@ -70,6 +113,58 @@ static int s6e8aa5x01_ams520kt01_on(struct s6e8aa5x01_ams520kt01 *ctx)
 	mipi_dsi_dcs_set_display_on_multi(&dsi_ctx);
 
 	return dsi_ctx.accum_err;
+}
+
+static int s6e8aa5x01_ams520kt01_bl_update_status(struct backlight_device *bl)
+{
+	struct s6e8aa5x01_ams520kt01 *ctx = bl_get_data(bl);
+	struct mipi_dsi_multi_context dsi_ctx = { .dsi = ctx->dsi };
+	u16 brightness = backlight_get_brightness(bl);
+	unsigned int luminance;
+	u16 aid;
+	int i;
+
+	if (!ctx->panel.enabled)
+		return 0;
+
+	aid = AMS520KT01_AID_MAX - brightness;
+	luminance = DIV_ROUND_UP(AMS520KT01_MAX_LUMINANCE *
+				 (AMS520KT01_AID_LINES_TOTAL - aid),
+				 AMS520KT01_AID_LINES_TOTAL);
+
+	for (i = 0; i < ARRAY_SIZE(s6e8aa5x01_ams520kt01_elvss) - 1; i++)
+		if (luminance <= s6e8aa5x01_ams520kt01_elvss[i].max_luminance)
+			break;
+
+	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xf0, 0x5a, 0x5a);
+	mipi_dsi_dcs_write_var_seq_multi(&dsi_ctx, 0xb2, aid >> 8, aid & 0xff);
+	mipi_dsi_dcs_write_var_seq_multi(&dsi_ctx, 0xb6,
+					 s6e8aa5x01_ams520kt01_elvss[i].elvss[0],
+					 s6e8aa5x01_ams520kt01_elvss[i].elvss[1]);
+	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xf7, 0x03);
+	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xf0, 0xa5, 0xa5);
+
+	return dsi_ctx.accum_err;
+}
+
+static const struct backlight_ops s6e8aa5x01_ams520kt01_bl_ops = {
+	.update_status = s6e8aa5x01_ams520kt01_bl_update_status,
+};
+
+static struct backlight_device *
+s6e8aa5x01_ams520kt01_create_backlight(struct s6e8aa5x01_ams520kt01 *ctx)
+{
+	struct device *dev = &ctx->dsi->dev;
+	const struct backlight_properties props = {
+		.type = BACKLIGHT_RAW,
+		.scale = BACKLIGHT_SCALE_LINEAR,
+		.brightness = AMS520KT01_MAX_BRIGHTNESS / 2,
+		.max_brightness = AMS520KT01_MAX_BRIGHTNESS,
+	};
+
+	return devm_backlight_device_register(dev, dev_name(dev), dev, ctx,
+					      &s6e8aa5x01_ams520kt01_bl_ops,
+					      &props);
 }
 
 static int s6e8aa5x01_ams520kt01_off(struct s6e8aa5x01_ams520kt01 *ctx)
@@ -179,6 +274,11 @@ static int s6e8aa5x01_ams520kt01_probe(struct mipi_dsi_device *dsi)
 
 	ctx->dsi = dsi;
 	mipi_dsi_set_drvdata(dsi, ctx);
+
+	ctx->panel.backlight = s6e8aa5x01_ams520kt01_create_backlight(ctx);
+	if (IS_ERR(ctx->panel.backlight))
+		return dev_err_probe(dev, PTR_ERR(ctx->panel.backlight),
+				     "Failed to create backlight\n");
 
 	dsi->lanes = 4;
 	dsi->format = MIPI_DSI_FMT_RGB888;
