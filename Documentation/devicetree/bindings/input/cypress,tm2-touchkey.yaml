@@ -23,6 +23,7 @@ properties:
       - cypress,tm2-touchkey
       - cypress,midas-touchkey
       - cypress,aries-touchkey
+      - coreriver,tc350k-touchkey
       - coreriver,tc360-touchkey
 
   reg:
