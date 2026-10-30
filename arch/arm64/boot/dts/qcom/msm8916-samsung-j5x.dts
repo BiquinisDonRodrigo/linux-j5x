@@ -9,6 +9,29 @@
 	compatible = "samsung,j5x", "qcom,msm8916";
 	chassis-type = "handset";
 
+	i2c-fuel-gauge {
+		compatible = "i2c-gpio";
+		sda-gpios = <&tlmm 16 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
+		scl-gpios = <&tlmm 17 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
+		i2c-gpio,delay-us = <2>;
+
+		pinctrl-0 = <&fg_i2c_default>;
+		pinctrl-names = "default";
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		fuel-gauge@71 {
+			compatible = "siliconmitus,sm5703-fg";
+			reg = <0x71>;
+
+			interrupts-extended = <&tlmm 21 IRQ_TYPE_EDGE_FALLING>;
+
+			pinctrl-0 = <&fg_int_default>;
+			pinctrl-names = "default";
+		};
+	};
+
 	i2c-touchkey {
 		compatible = "i2c-gpio";
 		sda-gpios = <&tlmm 101 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
@@ -136,6 +159,20 @@
 };
 
 &tlmm {
+	fg_i2c_default: fg-i2c-default-state {
+		pins = "gpio16", "gpio17";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	fg_int_default: fg-int-default-state {
+		pins = "gpio21";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
 	lcd_3p0_ldo_en_default: lcd-3p0-ldo-en-default-state {
 		pins = "gpio115";
 		function = "gpio";
