@@ -30,6 +30,9 @@
 #define TM2_TOUCHKEY_CMD_LED_OFF	0x20
 #define TM2_TOUCHKEY_BIT_PRESS_EV	BIT(3)
 #define TM2_TOUCHKEY_BIT_KEYCODE	GENMASK(2, 0)
+#define TC350K_TOUCHKEY_BIT_PRESS(i)	BIT(i)
+#define TC350K_TOUCHKEY_BIT_RELEASE(i)	BIT((i) + 4)
+#define TC350K_TOUCHKEY_RELEASE_MASK	GENMASK(7, 4)
 #define TM2_TOUCHKEY_LED_VOLTAGE_MIN	2500000
 #define TM2_TOUCHKEY_LED_VOLTAGE_MAX	3300000
 
@@ -40,6 +43,7 @@ struct touchkey_variant {
 	u8 cmd_led_off;
 	bool no_reg;
 	bool fixed_regulator;
+	bool bitmap_events;
 };
 
 struct tm2_touchkey_data {
@@ -78,6 +82,19 @@ static const struct touchkey_variant tc360_touchkey_variant = {
 	.keycode_reg = 0x00,
 	.base_reg = 0x00,
 	.fixed_regulator = true,
+	.cmd_led_on = TM2_TOUCHKEY_CMD_LED_ON,
+	.cmd_led_off = TM2_TOUCHKEY_CMD_LED_OFF,
+};
+
+/*
+ * TC350K firmware found e.g. in the Galaxy J5 2016 reports one press bit
+ * (bits 0-3) and one release bit (bits 4-7) per key instead of a key index.
+ */
+static const struct touchkey_variant tc350k_touchkey_variant = {
+	.keycode_reg = 0x00,
+	.base_reg = 0x00,
+	.fixed_regulator = true,
+	.bitmap_events = true,
 	.cmd_led_on = TM2_TOUCHKEY_CMD_LED_ON,
 	.cmd_led_off = TM2_TOUCHKEY_CMD_LED_OFF,
 };
@@ -130,9 +147,31 @@ static void tm2_touchkey_power_disable(void *data)
 			       touchkey->regulators);
 }
 
+static void tm2_touchkey_report_bitmap(struct tm2_touchkey_data *touchkey,
+				       u8 data)
+{
+	int i;
+
+	for (i = 0; i < touchkey->num_keycodes; i++) {
+		if (data & TC350K_TOUCHKEY_BIT_PRESS(i)) {
+			input_event(touchkey->input_dev, EV_MSC, MSC_SCAN, i);
+			input_report_key(touchkey->input_dev,
+					 touchkey->keycodes[i], 1);
+		}
+		if (data & TC350K_TOUCHKEY_BIT_RELEASE(i)) {
+			input_event(touchkey->input_dev, EV_MSC, MSC_SCAN, i);
+			input_report_key(touchkey->input_dev,
+					 touchkey->keycodes[i], 0);
+		}
+	}
+
+	input_sync(touchkey->input_dev);
+}
+
 static irqreturn_t tm2_touchkey_irq_handler(int irq, void *devid)
 {
 	struct tm2_touchkey_data *touchkey = devid;
+	bool released;
 	int data;
 	int index;
 	int i;
@@ -146,6 +185,12 @@ static irqreturn_t tm2_touchkey_irq_handler(int irq, void *devid)
 		dev_err(&touchkey->client->dev,
 			"failed to read i2c data: %d\n", data);
 		goto out;
+	}
+
+	if (touchkey->variant->bitmap_events) {
+		tm2_touchkey_report_bitmap(touchkey, data);
+		released = data & TC350K_TOUCHKEY_RELEASE_MASK;
+		goto out_led;
 	}
 
 	index = (data & TM2_TOUCHKEY_BIT_KEYCODE) - 1;
@@ -169,8 +214,9 @@ static irqreturn_t tm2_touchkey_irq_handler(int irq, void *devid)
 	input_sync(touchkey->input_dev);
 
 out:
-	if (touchkey->variant->fixed_regulator &&
-				data & TM2_TOUCHKEY_BIT_PRESS_EV) {
+	released = data & TM2_TOUCHKEY_BIT_PRESS_EV;
+out_led:
+	if (touchkey->variant->fixed_regulator && released) {
 		/* touch turns backlight on, so make sure we're in sync */
 		if (touchkey->led_dev.brightness == LED_OFF)
 			tm2_touchkey_led_brightness_set(&touchkey->led_dev,
@@ -341,6 +387,9 @@ static const struct of_device_id tm2_touchkey_of_match[] = {
 	}, {
 		.compatible = "cypress,aries-touchkey",
 		.data = &aries_touchkey_variant,
+	}, {
+		.compatible = "coreriver,tc350k-touchkey",
+		.data = &tc350k_touchkey_variant,
 	}, {
 		.compatible = "coreriver,tc360-touchkey",
 		.data = &tc360_touchkey_variant,
