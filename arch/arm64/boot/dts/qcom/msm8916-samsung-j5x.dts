@@ -216,7 +216,7 @@
 		reg = <0x60>;
 
 		interrupts-extended = <&tlmm 20 IRQ_TYPE_EDGE_FALLING>;
-		proximity-near-level = <17>;
+		proximity-near-level = <10>;
 
 		vdd-supply = <&pm8916_l17>;
 		vio-supply = <&pm8916_l6>;
