@@ -34,6 +34,12 @@
 #define HI552_EXPOSURE_MAX_MARGIN	4
 #define HI552_EXPOSURE_STEP		1
 
+/* Analogue gain is 1 + code / 16, code 0..240 (1x..16x), measured on device */
+#define HI552_REG_ANALOG_GAIN		CCI_REG16(0x003a)
+#define HI552_ANAL_GAIN_MIN		0
+#define HI552_ANAL_GAIN_MAX		240
+#define HI552_ANAL_GAIN_STEP		1
+
 /* Frame length lines and line length (in pixel clocks) */
 #define HI552_REG_FLL			CCI_REG16(0x0006)
 #define HI552_FLL_MAX			0xffff
@@ -119,6 +125,9 @@ static int hi552_set_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_EXPOSURE:
 		cci_write(hi552->regmap, HI552_REG_EXPOSURE, ctrl->val, &ret);
 		break;
+	case V4L2_CID_ANALOGUE_GAIN:
+		cci_write(hi552->regmap, HI552_REG_ANALOG_GAIN, ctrl->val, &ret);
+		break;
 	case V4L2_CID_VBLANK:
 		cci_write(hi552->regmap, HI552_REG_FLL,
 			  mode->height + ctrl->val, &ret);
@@ -147,7 +156,7 @@ static int hi552_init_controls(struct hi552 *hi552)
 	u32 hblank;
 	int ret;
 
-	v4l2_ctrl_handler_init(hdl, 8);
+	v4l2_ctrl_handler_init(hdl, 9);
 
 	ctrl = v4l2_ctrl_new_int_menu(hdl, &hi552_ctrl_ops, V4L2_CID_LINK_FREQ,
 				      ARRAY_SIZE(hi552_link_freq_menu) - 1, 0,
@@ -179,6 +188,10 @@ static int hi552_init_controls(struct hi552 *hi552)
 					    V4L2_CID_EXPOSURE,
 					    HI552_EXPOSURE_MIN, exposure_max,
 					    HI552_EXPOSURE_STEP, exposure_max);
+
+	v4l2_ctrl_new_std(hdl, &hi552_ctrl_ops, V4L2_CID_ANALOGUE_GAIN,
+			  HI552_ANAL_GAIN_MIN, HI552_ANAL_GAIN_MAX,
+			  HI552_ANAL_GAIN_STEP, HI552_ANAL_GAIN_MIN);
 
 	ret = v4l2_fwnode_device_parse(hi552->dev, &props);
 	if (ret)
