@@ -957,6 +957,15 @@ config LEDS_NIC78BX
 	  To compile this driver as a module, choose M here: the module
 	  will be called leds-nic78bx.
 
+config LEDS_SM5703
+	tristate "LED support for the Silicon Mitus SM5703 flash LED driver"
+	depends on LEDS_CLASS
+	depends on MFD_SM5703
+	help
+	  This option enables torch mode support for the flash LED driver
+	  of the Silicon Mitus SM5703, used e.g. for the rear camera flash of
+	  the Samsung Galaxy J5 2016.
+
 config LEDS_SPI_BYTE
 	tristate "LED support for SPI LED controller with a single byte"
 	depends on LEDS_CLASS
