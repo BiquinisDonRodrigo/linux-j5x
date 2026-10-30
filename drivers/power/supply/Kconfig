@@ -1072,6 +1072,17 @@ config FUEL_GAUGE_STC3117
          Say Y here to enable support for fuel gauge with STC3117
          chip.
 
+config FUEL_GAUGE_SM5703
+	tristate "Silicon Mitus SM5703 fuel gauge driver"
+	depends on I2C
+	select REGMAP_I2C
+	help
+	  Say Y here to enable support for the fuel gauge block of the
+	  Silicon Mitus SM5703, found e.g. in the Samsung Galaxy J5 2016.
+
+	  The driver only reads the battery voltage, current and state of
+	  charge, it does not configure the fuel gauge.
+
 config CHARGER_UCS1002
 	tristate "Microchip UCS1002 USB Port Power Controller"
 	depends on I2C
