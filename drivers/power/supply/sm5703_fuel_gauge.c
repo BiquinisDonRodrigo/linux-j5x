@@ -15,6 +15,7 @@
 #include <linux/mod_devicetable.h>
 #include <linux/module.h>
 #include <linux/power_supply.h>
+#include <linux/property.h>
 #include <linux/regmap.h>
 
 #define SM5703_FG_REG_DEVICE_ID		0x00
