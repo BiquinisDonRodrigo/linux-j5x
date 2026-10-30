@@ -17,6 +17,7 @@
 #include <linux/regmap.h>
 
 static const struct mfd_cell sm5703_devs[] = {
+	MFD_CELL_NAME("sm5703-charger"),
 	MFD_CELL_NAME("sm5703-regulator"),
 };
 
